@@ -47,7 +47,7 @@ define([
         }
     }
     
-    function _mutexTransaction(key, callback, synchronous) {
+    function _mutexTransaction(key, maxDuration, callback, synchronous) {
         var xKey = key + "__MUTEX_x",
             yKey = key + "__MUTEX_y",
             getY = getter(yKey);
@@ -63,7 +63,7 @@ define([
         localStorage[xKey] = myId;
         if (getY()) {
             if (!synchronous)
-                setTimeout(function () { _mutexTransaction(key, callback); }, 0);
+                setTimeout(function () { _mutexTransaction(key, maxDuration, callback); }, 0);
             return false;
         }
         localStorage[yKey] = myId + "|" + (now() + 40);
@@ -72,11 +72,11 @@ define([
             if (!synchronous) {
                 setTimeout(function () {
                     if (getY() !== myId) {
-                        setTimeout(function () { _mutexTransaction(key, callback); }, 0);
+                        setTimeout(function () { _mutexTransaction(key, maxDuration, callback); }, 0);
                     } else {
                         criticalSection();
                     }
-                }, 50)
+                }, maxDuration)
             }
             return false;
         } else {
@@ -103,7 +103,7 @@ define([
             return false;
         }
         
-        var aquiredSynchronously = _mutexTransaction(key, function () {
+        var aquiredSynchronously = _mutexTransaction(key, maxDuration, function () {
             if (getMutex()) {
                 if (!synchronous)
                     restart();
@@ -123,7 +123,7 @@ define([
             try {
                 callback();
             } finally {
-                _mutexTransaction(key, function () {
+                _mutexTransaction(key, maxDuration, function () {
                     if (localStorage[mutexKey] !== mutexValue)
                         throw key + " was locked by a different process while I held the lock"
                 
